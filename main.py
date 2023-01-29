@@ -3,6 +3,7 @@ from random import choice, randrange
 from copy import deepcopy
 import sys
 import os
+import random
 
 pygame.init()
 width, height = 10, 20
@@ -12,7 +13,9 @@ size = 700, 600
 v = 180
 fps = 60
 
+
 screen = pygame.display.set_mode(size)
+screen_rect = (0, 0, size)
 game_sc = pygame.Surface(game_rise)
 pygame.init()
 
@@ -57,7 +60,6 @@ def load_image(name, colorkey=None):
         image.set_colorkey(colorkey)
     else:
         image = image.convert_alpha()
-    print('ok')
     return image
 
 
@@ -70,6 +72,7 @@ def get_color():
 start_screen = load_image('start_screen.png')
 bg = load_image('bg.png')
 game_bg = load_image('game_bg.png')
+
 
 color, next_color = get_color(), get_color()
 
@@ -120,9 +123,53 @@ def start_screen():
         pygame.display.flip()
 
 
+GRAVITY = 1
+
+
+class Particle(pygame.sprite.Sprite):
+    # сгенерируем частицы разного размера
+    fire = [load_image("star.png")]
+    for scale in (5, 10, 20):
+        fire.append(pygame.transform.scale(fire[0], (scale, scale)))
+
+    def __init__(self, pos, dx, dy):
+        super()._init_(all_sprites)
+        self.image = random.choice(self.fire)
+        self.rect = self.image.get_rect()
+
+        # у каждой частицы своя скорость — это вектор
+        self.velocity = [dx, dy]
+        # и свои координаты
+        self.rect.x, self.rect.y = pos
+
+        # гравитация будет одинаковой (значение константы)
+        self.gravity = GRAVITY
+
+    def update(self):
+        # применяем гравитационный эффект:
+        # движение с ускорением под действием гравитации
+        self.velocity[1] += self.gravity
+        # перемещаем частицу
+        self.rect.x += self.velocity[0]
+        self.rect.y += self.velocity[1]
+        # убиваем, если частица ушла за экран
+        if not self.rect.colliderect(screen_rect):
+            self.kill()
+
+
+def create_particles(position):
+    # количество создаваемых частиц
+    particle_count = 20
+    # возможные скорости
+    numbers = range(-5, 6)
+    for _ in range(particle_count):
+        Particle(position, random.choice(numbers), random.choice(numbers))
+
+
+all_sprites = pygame.sprite.Group()
 clock = pygame.time.Clock()
+running = True
 if __name__ == '__main__':
-    running = True
     bool = False
     count_bool = 0
     pygame.mixer.music.play(-1)
@@ -150,6 +197,7 @@ if __name__ == '__main__':
             screen.blit(bg, (0, 0))
             screen.blit(game_sc, (0, 0))
             game_sc.blit(game_bg, (0, 0))
+
             # управление
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -217,6 +265,16 @@ if __name__ == '__main__':
                 if count < width:
                     line -= 1
                 else:
+                    pos = 100, 0
+                    create_particles(pos)
+                    pos = 200, 0
+                    create_particles(pos)
+                    pos = 150, 0
+                    create_particles(pos)
+                    pos = 50, 0
+                    create_particles(pos)
+                    pos = 250, 0
+                    create_particles(pos)
                     anim_speed += 3
                     lines += 1
 
@@ -263,11 +321,12 @@ if __name__ == '__main__':
                     score = 0
                     # заставка проигрыша
                     for i_rect in grid:
-                        print(i_rect)
                         pygame.draw.rect(game_sc, get_color(), i_rect)
                         screen.blit(game_sc, (0, 0))
                         pygame.display.flip()
                         clock.tick(200)
 
+            all_sprites.update()
+            all_sprites.draw(screen)
             pygame.display.flip()
             clock.tick(fps)
